@@ -1,0 +1,146 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Film Chooser</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #camera,
+      #film {
+        width: 300px;
+      }
+
+      img {
+        display: block;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+
+      .container {
+        width: 800px;
+        left: 50%;
+        margin-left: -400px;
+        position: absolute;
+        text-align: center;
+      }
+
+      .spacer {
+        margin: 15px 0;
+      }
+
+      #photos {
+        margin-top: 25px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Film Chooser</h1>
+      <div class="spacer"><select id="camera"></select></div>
+      <div class="spacer"><select id="film"></select></div>
+      <div id="photos"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="./films.js"></script>
+    <script src="./cameras.js"></script>
+    <script>
+      $(() => {
+        films.sort();
+        cameras.sort();
+
+        $("#camera").select2({
+          placeholder: "Camera",
+          data: cameras
+            .filter((camera) => {
+              return !camera.startsWith(".");
+            })
+            .map((camera) => {
+              return {
+                id: camera,
+                text: camera,
+              };
+            }),
+          allowClear: true,
+        });
+
+        $("#film").select2({
+          placeholder: "Film",
+          data: films.map((film) => {
+            return {
+              id: film,
+              text: film,
+            };
+          }),
+          allowClear: true,
+        });
+
+        $("#camera").on("change", () => loadPhotos());
+        $("#film").on("change", () => loadPhotos());
+
+        const defaultCamera = localStorage.getItem("camera") || "Canon AE-1";
+        const defaultFilm = localStorage.getItem("film") || "Kodak Portra 400";
+
+        $("#camera").val(defaultCamera);
+        $("#film").val(defaultFilm);
+
+        $("#camera").trigger("change");
+        $("#film").trigger("change");
+
+        function loadPhotos() {
+          const apiKey = "4d2a8ee1766f08c03e9281bbfaf88c9a";
+          let query = "";
+
+          const camera = $("#camera").val();
+          const film = $("#film").val();
+
+          if (camera) {
+            query += `"${camera}"`;
+            localStorage.setItem("camera", camera);
+          }
+
+          if (film) {
+            if (camera) query += " ";
+            query += `"${film}"`;
+            localStorage.setItem("film", film);
+          }
+
+          $photos = $("#photos");
+          $photos.html("<i>Loading...</i>");
+
+          $.get(
+            `https://www.flickr.com/services/rest/?api_key=${apiKey}&method=flickr.photos.search&format=json&nojsoncallback=1&text=${query}`,
+            (data) => {
+              $photos.empty();
+
+              if (data.photos.total == 0) {
+                $photos.html(
+                  "<p>There are no photos for this camera/film combination on flickr.</p><p><b>Be the first to upload one!</b></p>"
+                );
+              }
+
+              for (const photo of data.photos.photo) {
+                $photos.append(
+                  `<a href="https://www.flickr.com/photos/${photo.owner}/${photo.id}/" target="_blank">` +
+                    `<img src="https://live.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}_b.jpg" />` +
+                    `</a>`
+                );
+              }
+            }
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
